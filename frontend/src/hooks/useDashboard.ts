@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../lib/api';
-import type { Period } from '../types';
+import type { Period, DrillDownCardType } from '../types';
 import { getPeriodDates } from '../utils/format';
 
 interface UseDashboardOptions {
@@ -50,5 +50,17 @@ export function useProfitTrend(opts: UseDashboardOptions) {
   return useQuery({
     queryKey: ['dashboard', 'profit-trend', params],
     queryFn: () => dashboardApi.getProfitTrend(params),
+  });
+}
+
+export function useKpiDrillDown(
+  cardType: DrillDownCardType | null,
+  opts: UseDashboardOptions
+) {
+  const params = buildParams(opts);
+  return useQuery({
+    queryKey: ['dashboard', 'drilldown', cardType, params],
+    queryFn: () => dashboardApi.getDrillDown(cardType!, params),
+    enabled: !!cardType,
   });
 }

@@ -16,6 +16,7 @@ from app.models.purchase import Purchase
 from app.schemas.dashboard import (
     DashboardSummary, SalesTrendPoint, PurchaseTrendPoint, ProfitTrendPoint,
     SalesDistribution, TopShopItem, TopSupplierItem, MonthlyBreakdown, DailyBreakdown,
+    DrillDownRow, DrillDownResponse,
 )
 
 IST = pytz.timezone("Asia/Kolkata")
@@ -565,3 +566,95 @@ async def generate_export_csv(
         ])
 
     return output.getvalue()
+
+
+async def get_kpi_drilldown(
+    db: AsyncSession,
+    card_type: str,
+    start_date: Optional[date],
+    end_date: Optional[date],
+    period_label: str,
+) -> DrillDownResponse:
+    """Get aggregated drill-down data for a KPI card click."""
+    rows = []
+    grand_total = 0.0
+    grand_profit = 0.0
+
+    if card_type in ('wholesale_sales', 'wholesale_profit'):
+        q = select(
+            WholesaleSale.shop_name,
+            func.coalesce(func.sum(WholesaleSale.selling_amount), 0).label('total_amount'),
+            func.coalesce(func.sum(WholesaleSale.estimated_profit), 0).label('total_profit'),
+            func.count(WholesaleSale.id).label('cnt'),
+        )
+        q = _apply_wholesale_date_filter(q, start_date, end_date)
+        if card_type == 'wholesale_profit':
+            q = q.group_by(WholesaleSale.shop_name).order_by(func.sum(WholesaleSale.estimated_profit).desc())
+        else:
+            q = q.group_by(WholesaleSale.shop_name).order_by(func.sum(WholesaleSale.selling_amount).desc())
+        db_rows = (await db.execute(q)).fetchall()
+        for r in db_rows:
+            rows.append(DrillDownRow(
+                name=r[0] or 'Unknown',
+                total_amount=_d(r[1]),
+                total_profit=_d(r[2]),
+                transaction_count=r[3],
+            ))
+        grand_total = sum(r.total_amount for r in rows)
+        grand_profit = sum(r.total_profit for r in rows)
+
+    elif card_type in ('retail_sales', 'retail_profit'):
+        q = select(
+            func.coalesce(RetailSale.customer_label, 'Walk-in / Counter').label('cust'),
+            func.coalesce(func.sum(RetailSale.selling_amount), 0).label('total_amount'),
+            func.coalesce(func.sum(RetailSale.estimated_profit), 0).label('total_profit'),
+            func.count(RetailSale.id).label('cnt'),
+        )
+        q = _apply_retail_date_filter(q, start_date, end_date)
+        if card_type == 'retail_profit':
+            q = q.group_by(func.coalesce(RetailSale.customer_label, 'Walk-in / Counter')).order_by(func.sum(RetailSale.estimated_profit).desc())
+        else:
+            q = q.group_by(func.coalesce(RetailSale.customer_label, 'Walk-in / Counter')).order_by(func.sum(RetailSale.selling_amount).desc())
+        db_rows = (await db.execute(q)).fetchall()
+        for r in db_rows:
+            rows.append(DrillDownRow(
+                name=r[0],
+                total_amount=_d(r[1]),
+                total_profit=_d(r[2]),
+                transaction_count=r[3],
+            ))
+        grand_total = sum(r.total_amount for r in rows)
+        grand_profit = sum(r.total_profit for r in rows)
+
+    elif card_type == 'purchase_expenditure':
+        total_exp_expr = (
+            Purchase.purchase_amount +
+            Purchase.packing_cost +
+            Purchase.parcel_cost +
+            Purchase.other_expenses
+        )
+        q = select(
+            Purchase.supplier_name,
+            func.coalesce(func.sum(total_exp_expr), 0).label('total_amount'),
+            func.count(Purchase.id).label('cnt'),
+        )
+        q = _apply_purchase_date_filter(q, start_date, end_date)
+        q = q.group_by(Purchase.supplier_name).order_by(func.sum(total_exp_expr).desc())
+        db_rows = (await db.execute(q)).fetchall()
+        for r in db_rows:
+            rows.append(DrillDownRow(
+                name=r[0] or 'Unknown',
+                total_amount=_d(r[1]),
+                total_profit=0.0,
+                transaction_count=r[2],
+            ))
+        grand_total = sum(r.total_amount for r in rows)
+        grand_profit = 0.0
+
+    return DrillDownResponse(
+        card_type=card_type,
+        period_label=period_label,
+        rows=rows,
+        total_amount=grand_total,
+        total_profit=grand_profit,
+    )

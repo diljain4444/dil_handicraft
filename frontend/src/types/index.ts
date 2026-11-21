@@ -128,3 +128,25 @@ export interface AnalyticsSummary {
   top_suppliers: TopSupplier[];
   monthly_breakdown: MonthlyBreakdown[];
 }
+
+export type DrillDownCardType =
+  | 'wholesale_sales'
+  | 'retail_sales'
+  | 'purchase_expenditure'
+  | 'wholesale_profit'
+  | 'retail_profit';
+
+export interface DrillDownRow {
+  name: string;
+  total_amount: number;
+  total_profit: number;
+  transaction_count: number;
+}
+
+export interface DrillDownResponse {
+  card_type: DrillDownCardType;
+  period_label: string;
+  rows: DrillDownRow[];
+  total_amount: number;
+  total_profit: number;
+}

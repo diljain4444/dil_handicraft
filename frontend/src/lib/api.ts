@@ -11,6 +11,8 @@ import type {
   TopShop,
   TopSupplier,
   MonthlyBreakdown,
+  DrillDownResponse,
+  DrillDownCardType,
 } from '../types';
 
 const api = axios.create({
@@ -85,6 +87,15 @@ export const dashboardApi = {
   },
   getProfitTrend: async (params: DashboardParams): Promise<TrendDataPoint[]> => {
     const { data } = await api.get<TrendDataPoint[]>('/api/dashboard/profit-trend', { params });
+    return data;
+  },
+  getDrillDown: async (
+    card_type: DrillDownCardType,
+    params: DashboardParams
+  ): Promise<DrillDownResponse> => {
+    const { data } = await api.get<DrillDownResponse>('/api/dashboard/drilldown', {
+      params: { card_type, ...params },
+    });
     return data;
   },
 };

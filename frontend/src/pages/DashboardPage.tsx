@@ -10,6 +10,7 @@ import {
 import { PeriodSelector } from '../components/ui/PeriodSelector';
 import { KPICard } from '../components/ui/KPICard';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
+import { DrillDownModal } from '../components/ui/DrillDownModal';
 import { SalesDistributionChart } from '../components/charts/SalesDistributionChart';
 import { SalesTrendChart } from '../components/charts/SalesTrendChart';
 import { PurchaseTrendChart } from '../components/charts/PurchaseTrendChart';
@@ -19,13 +20,15 @@ import {
   useSalesTrend,
   usePurchaseTrend,
   useProfitTrend,
+  useKpiDrillDown,
 } from '../hooks/useDashboard';
-import type { Period } from '../types';
+import type { Period, DrillDownCardType } from '../types';
 
 export function DashboardPage() {
   const [period, setPeriod] = useState<Period>('month');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [activeCard, setActiveCard] = useState<DrillDownCardType | null>(null);
 
   const opts = { period, startDate, endDate };
 
@@ -34,10 +37,15 @@ export function DashboardPage() {
   const { data: purchaseTrend, isLoading: purchaseTrendLoading } = usePurchaseTrend(opts);
   const { data: profitTrend, isLoading: profitTrendLoading } = useProfitTrend(opts);
 
+  const { data: drillDownData, isLoading: drillDownLoading } = useKpiDrillDown(activeCard, opts);
+
   const handleDateChange = (s: string, e: string) => {
     setStartDate(s);
     setEndDate(e);
   };
+
+  const openDrillDown = (card: DrillDownCardType) => setActiveCard(card);
+  const closeDrillDown = () => setActiveCard(null);
 
   return (
     <div className="p-4 max-w-3xl mx-auto space-y-5">
@@ -74,6 +82,8 @@ export function DashboardPage() {
             icon={ShoppingBag}
             color="#3b82f6"
             subtitle={`${summary.wholesale_count} transactions`}
+            clickable
+            onClick={() => openDrillDown('wholesale_sales')}
           />
           <KPICard
             title="Retail Sales"
@@ -81,6 +91,8 @@ export function DashboardPage() {
             icon={ShoppingCart}
             color="#22c55e"
             subtitle={`${summary.retail_count} transactions`}
+            clickable
+            onClick={() => openDrillDown('retail_sales')}
           />
           <KPICard
             title="Purchase Expenditure"
@@ -88,6 +100,8 @@ export function DashboardPage() {
             icon={Package}
             color="#8b5cf6"
             subtitle={`${summary.purchase_count} purchases`}
+            clickable
+            onClick={() => openDrillDown('purchase_expenditure')}
           />
           <KPICard
             title="Total Est. Profit"
@@ -101,6 +115,8 @@ export function DashboardPage() {
             icon={TrendingUp}
             color="#0ea5e9"
             subtitle="Profit from wholesale"
+            clickable
+            onClick={() => openDrillDown('wholesale_profit')}
           />
           <KPICard
             title="Retail Profit"
@@ -108,6 +124,8 @@ export function DashboardPage() {
             icon={TrendingUp}
             color="#10b981"
             subtitle="Profit from retail"
+            clickable
+            onClick={() => openDrillDown('retail_profit')}
           />
           <KPICard
             title="Additional Expenses"
@@ -158,6 +176,15 @@ export function DashboardPage() {
           <ProfitTrendChart data={profitTrend || []} />
         )}
       </div>
+
+      {/* Drill-Down Modal */}
+      <DrillDownModal
+        cardType={activeCard}
+        periodLabel={summary?.period_label || ''}
+        data={drillDownData}
+        isLoading={drillDownLoading}
+        onClose={closeDrillDown}
+      />
     </div>
   );
 }

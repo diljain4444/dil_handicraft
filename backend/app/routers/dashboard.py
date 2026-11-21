@@ -9,11 +9,13 @@ from app.auth.auth import get_current_user
 from app.database import get_db
 from app.models.user import User
 from app.schemas.dashboard import (
-    DashboardSummary, SalesTrendPoint, PurchaseTrendPoint, ProfitTrendPoint, SalesDistribution
+    DashboardSummary, SalesTrendPoint, PurchaseTrendPoint, ProfitTrendPoint, SalesDistribution,
+    DrillDownResponse,
 )
 from app.services.analytics import (
     get_date_range, get_dashboard_summary, get_sales_trend,
     get_purchase_trend, get_profit_trend, get_sales_distribution,
+    get_kpi_drilldown,
 )
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -91,3 +93,22 @@ async def sales_distribution(
     """Return the split between wholesale and retail sales."""
     sd, ed, _ = get_date_range(period, start_date, end_date)
     return await get_sales_distribution(db, sd, ed)
+
+
+@router.get("/drilldown", response_model=DrillDownResponse, summary="KPI card drill-down breakdown")
+async def kpi_drilldown(
+    card_type: str = Query(..., description="wholesale_sales|retail_sales|purchase_expenditure|wholesale_profit|retail_profit"),
+    period: str = Query("month"),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DrillDownResponse:
+    """Return aggregated breakdown by party/customer/supplier for the clicked KPI card."""
+    sd, ed, label = get_date_range(period, start_date, end_date)
+    return await get_kpi_drilldown(db, card_type, sd, ed, label)
+
+
+@router.get("/health", summary="Health check")
+async def health_check():
+    return {"status": "ok"}

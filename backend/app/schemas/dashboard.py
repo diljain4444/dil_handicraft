@@ -104,3 +104,20 @@ class PeriodParams(BaseModel):
     period: str = "month"
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+
+
+class DrillDownRow(BaseModel):
+    """A single aggregated row in a KPI drill-down."""
+    name: str              # Party name / customer name / supplier name
+    total_amount: float    # Total sales amount OR total purchase expenditure
+    total_profit: float    # Estimated profit (0 for purchases)
+    transaction_count: int # Number of individual transactions
+
+
+class DrillDownResponse(BaseModel):
+    """Full drill-down response for a KPI card."""
+    card_type: str         # 'wholesale_sales' | 'retail_sales' | 'purchase_expenditure' | 'wholesale_profit' | 'retail_profit'
+    period_label: str
+    rows: list[DrillDownRow]
+    total_amount: float    # Grand total
+    total_profit: float    # Grand total profit

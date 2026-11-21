@@ -133,3 +133,48 @@ async def test_health_check(client: AsyncClient):
     resp = await client.get("/health")
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_kpi_drilldown(auth_client: AsyncClient):
+    """Test KPI drill-down endpoint for multiple card types."""
+    today = str(date.today())
+
+    # Create 2 wholesale sales for Party P1
+    await auth_client.post("/api/wholesale", json={
+        "shop_name": "Party P1",
+        "transaction_date": today,
+        "selling_amount": "1000.00",
+        "estimated_profit": "150.00",
+    })
+    await auth_client.post("/api/wholesale", json={
+        "shop_name": "Party P1",
+        "transaction_date": today,
+        "selling_amount": "2000.00",
+        "estimated_profit": "300.00",
+    })
+
+    # Test wholesale_sales drilldown
+    resp = await auth_client.get("/api/dashboard/drilldown?card_type=wholesale_sales&period=today")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["card_type"] == "wholesale_sales"
+    assert "rows" in data
+    # Find Party P1 aggregated row
+    p1_rows = [r for r in data["rows"] if r["name"] == "Party P1"]
+    assert len(p1_rows) == 1
+    p1 = p1_rows[0]
+    assert p1["total_amount"] >= 3000.0
+    assert p1["total_profit"] >= 450.0
+    assert p1["transaction_count"] >= 2
+
+    # Test purchase_expenditure drilldown
+    resp_p = await auth_client.get("/api/dashboard/drilldown?card_type=purchase_expenditure&period=today")
+    assert resp_p.status_code == 200
+    assert resp_p.json()["card_type"] == "purchase_expenditure"
+
+    # Test retail_sales drilldown
+    resp_r = await auth_client.get("/api/dashboard/drilldown?card_type=retail_sales&period=today")
+    assert resp_r.status_code == 200
+    assert resp_r.json()["card_type"] == "retail_sales"
+
