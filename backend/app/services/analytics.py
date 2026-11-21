@@ -604,21 +604,28 @@ async def get_kpi_drilldown(
         grand_profit = sum(r.total_profit for r in rows)
 
     elif card_type in ('retail_sales', 'retail_profit'):
+        # Use CASE WHEN instead of coalesce in GROUP BY to avoid PostgreSQL ambiguity
+        from sqlalchemy import case as sa_case
+        cust_expr = sa_case(
+            (RetailSale.customer_label != None, RetailSale.customer_label),  # noqa: E711
+            else_='Walk-in / Counter'
+        ).label('cust')
+        if card_type == 'retail_profit':
+            order_expr = func.sum(RetailSale.estimated_profit).desc()
+        else:
+            order_expr = func.sum(RetailSale.selling_amount).desc()
         q = select(
-            func.coalesce(RetailSale.customer_label, 'Walk-in / Counter').label('cust'),
+            cust_expr,
             func.coalesce(func.sum(RetailSale.selling_amount), 0).label('total_amount'),
             func.coalesce(func.sum(RetailSale.estimated_profit), 0).label('total_profit'),
             func.count(RetailSale.id).label('cnt'),
         )
         q = _apply_retail_date_filter(q, start_date, end_date)
-        if card_type == 'retail_profit':
-            q = q.group_by(func.coalesce(RetailSale.customer_label, 'Walk-in / Counter')).order_by(func.sum(RetailSale.estimated_profit).desc())
-        else:
-            q = q.group_by(func.coalesce(RetailSale.customer_label, 'Walk-in / Counter')).order_by(func.sum(RetailSale.selling_amount).desc())
+        q = q.group_by(RetailSale.customer_label).order_by(order_expr)
         db_rows = (await db.execute(q)).fetchall()
         for r in db_rows:
             rows.append(DrillDownRow(
-                name=r[0],
+                name=r[0] if r[0] is not None else 'Walk-in / Counter',
                 total_amount=_d(r[1]),
                 total_profit=_d(r[2]),
                 transaction_count=r[3],
