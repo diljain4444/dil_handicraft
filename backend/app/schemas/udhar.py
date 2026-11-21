@@ -83,3 +83,5 @@ class UdharSummary(BaseModel):
     total_customers: int
     overdue_count: int
     overdue_amount: float
+    total_paid_count: int = 0
+    total_paid_amount: float = 0.0

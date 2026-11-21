@@ -198,6 +198,8 @@ export interface UdharSummary {
   total_customers: number;
   overdue_count: number;
   overdue_amount: number;
+  total_paid_count?: number;
+  total_paid_amount?: number;
 }
 
 export interface UdharCreatePayload {

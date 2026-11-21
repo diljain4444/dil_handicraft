@@ -35,7 +35,8 @@ async def get_udhar_by_id(db: AsyncSession, udhar_id: int) -> Optional[Udhar]:
 
 async def list_udhar(
     db: AsyncSession,
-    show_paid: bool = False,
+    status: str = "pending",
+    show_paid: Optional[bool] = None,
     customer_name: Optional[str] = None,
     sort: str = "newest",
     page: int = 1,
@@ -44,8 +45,16 @@ async def list_udhar(
     """List udhar entries with optional filters and pagination."""
     query = select(Udhar)
 
-    if not show_paid:
-        query = query.where(Udhar.is_paid == False)  # noqa: E712
+    if show_paid is not None:
+        if not show_paid:
+            query = query.where(Udhar.is_paid == False)  # noqa: E712
+    else:
+        if status == "pending":
+            query = query.where(Udhar.is_paid == False)  # noqa: E712
+        elif status == "paid":
+            query = query.where(Udhar.is_paid == True)  # noqa: E712
+        # 'all' applies no filter on is_paid
+
     if customer_name:
         query = query.where(Udhar.customer_name.ilike(f"%{customer_name}%"))
 
@@ -112,11 +121,20 @@ async def get_udhar_summary(db: AsyncSession) -> UdharSummary:
     )
     orow = (await db.execute(oq)).one()
 
+    # Paid stats
+    pq = select(
+        func.count(Udhar.id).label("cnt"),
+        func.coalesce(func.sum(Udhar.original_amount), 0).label("amt"),
+    ).where(Udhar.is_paid == True)  # noqa: E712
+    prow = (await db.execute(pq)).one()
+
     return UdharSummary(
         total_pending=float(row.total_pending),
         total_customers=row.total_customers,
         overdue_count=orow.cnt,
         overdue_amount=float(orow.amt),
+        total_paid_count=prow.cnt,
+        total_paid_amount=float(prow.amt),
     )
 
 

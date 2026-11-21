@@ -284,6 +284,7 @@ export default api;
 
 // --- Udhar (Credit / Khata) ---
 export interface UdharListParams {
+  status?: 'pending' | 'paid' | 'all';
   show_paid?: boolean;
   customer_name?: string;
   sort?: 'newest' | 'oldest' | 'due_soon' | 'highest';

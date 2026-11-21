@@ -49,7 +49,8 @@ async def autocomplete_customers(
 
 @router.get("", response_model=UdharListResponse, summary="List udhar entries")
 async def list_udhar(
-    show_paid: bool = Query(False, description="Include paid/cleared entries"),
+    status: str = Query("pending", description="pending | paid | all"),
+    show_paid: Optional[bool] = Query(None, description="Legacy param"),
     customer_name: Optional[str] = Query(None, description="Partial name filter"),
     sort: str = Query("newest", description="newest | oldest | due_soon | highest"),
     page: int = Query(1, ge=1),
@@ -59,7 +60,7 @@ async def list_udhar(
 ) -> UdharListResponse:
     """List udhar entries with optional filters and pagination."""
     items, total = await svc.list_udhar(
-        db, show_paid=show_paid, customer_name=customer_name,
+        db, status=status, show_paid=show_paid, customer_name=customer_name,
         sort=sort, page=page, page_size=page_size,
     )
     total_pages = math.ceil(total / page_size) if total > 0 else 1
