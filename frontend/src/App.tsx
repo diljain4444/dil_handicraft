@@ -5,6 +5,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { MorePage } from './pages/MorePage';
+import { UdharPage } from './pages/UdharPage';
 import { AppShell } from './components/layout/AppShell';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,7 @@ export default function App() {
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/transactions" element={<TransactionsPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/udhar" element={<UdharPage />} />
                 <Route path="/more" element={<MorePage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

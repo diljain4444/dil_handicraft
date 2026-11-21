@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.wholesale import WholesaleSale
 from app.models.retail import RetailSale
 from app.models.purchase import Purchase
+from app.models.udhar import Udhar
 from app.schemas.dashboard import (
     DashboardSummary, SalesTrendPoint, PurchaseTrendPoint, ProfitTrendPoint,
     SalesDistribution, TopShopItem, TopSupplierItem, MonthlyBreakdown, DailyBreakdown,
@@ -166,6 +167,13 @@ async def get_dashboard_summary(
     )
     total_purchase_expenditure = purchase_amount + additional_expenses
 
+    # Udhar pending (not filtered by period — always all-time pending)
+    udhar_q = select(
+        func.coalesce(func.sum(Udhar.remaining_amount), 0).label("total_pending"),
+        func.count(Udhar.id).label("customer_count"),
+    ).where(Udhar.is_paid == False)  # noqa: E712
+    udhar_result = (await db.execute(udhar_q)).one()
+
     return DashboardSummary(
         total_sales=total_sales,
         wholesale_sales=wholesale_sales,
@@ -179,6 +187,8 @@ async def get_dashboard_summary(
         wholesale_count=ws_result.count,
         retail_count=rt_result.count,
         purchase_count=pu_result.count,
+        total_udhar_pending=_d(udhar_result.total_pending),
+        udhar_customers_count=udhar_result.customer_count,
         period_label=period_label,
         start_date=start_date,
         end_date=end_date,
@@ -658,6 +668,25 @@ async def get_kpi_drilldown(
         grand_total = sum(r.total_amount for r in rows)
         grand_profit = 0.0
 
+    elif card_type == 'udhar_pending':
+        # Udhar drilldown — always all pending, not date-filtered
+        q = select(
+            Udhar.customer_name,
+            func.coalesce(func.sum(Udhar.remaining_amount), 0).label('total_amount'),
+            func.count(Udhar.id).label('cnt'),
+        ).where(Udhar.is_paid == False)  # noqa: E712
+        q = q.group_by(Udhar.customer_name).order_by(func.sum(Udhar.remaining_amount).desc())
+        db_rows = (await db.execute(q)).fetchall()
+        for r in db_rows:
+            rows.append(DrillDownRow(
+                name=r[0] or 'Unknown',
+                total_amount=_d(r[1]),
+                total_profit=0.0,
+                transaction_count=r[2],
+            ))
+        grand_total = sum(r.total_amount for r in rows)
+        grand_profit = 0.0
+
     return DrillDownResponse(
         card_type=card_type,
         period_label=period_label,
@@ -751,6 +780,32 @@ async def get_party_bills(
                 amount=_d(r[2]),
                 profit=0.0,
                 notes=r[3],
+            ))
+
+    elif card_type == 'udhar_pending':
+        # Show individual udhar entries for the customer (all pending, not date-filtered)
+        q = select(
+            Udhar.id,
+            Udhar.udhar_date,
+            Udhar.remaining_amount,
+            Udhar.original_amount,
+            Udhar.due_date,
+            Udhar.notes,
+        ).where(
+            Udhar.customer_name == party_name,
+            Udhar.is_paid == False,  # noqa: E712
+        ).order_by(Udhar.udhar_date.desc())
+        rows = (await db.execute(q)).fetchall()
+        for r in rows:
+            due_note = f" | Due: {r[4]}" if r[4] else ""
+            orig_note = f"Original: ₹{float(r[3]):,.0f}{due_note}"
+            combined_notes = f"{orig_note}" + (f" | {r[5]}" if r[5] else "")
+            bills.append(PartyBill(
+                id=r[0],
+                date=r[1],
+                amount=_d(r[2]),
+                profit=0.0,
+                notes=combined_notes,
             ))
 
     total_amount = sum(b.amount for b in bills)

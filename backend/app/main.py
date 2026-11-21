@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.routers import auth, wholesale, retail, purchases, dashboard, analytics
+from app.routers import auth, wholesale, retail, purchases, dashboard, analytics, udhar
 
 # Configure logging
 logging.basicConfig(
@@ -86,6 +86,7 @@ app.include_router(retail.router, prefix="/api")
 app.include_router(purchases.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(analytics.router, prefix="/api")
+app.include_router(udhar.router, prefix="/api")
 
 
 # Root endpoint

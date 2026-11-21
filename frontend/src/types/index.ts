@@ -47,6 +47,8 @@ export interface DashboardSummary {
   wholesale_count: number;
   retail_count: number;
   purchase_count: number;
+  total_udhar_pending: number;
+  udhar_customers_count: number;
   period_label: string;
   start_date?: string;
   end_date?: string;
@@ -134,7 +136,8 @@ export type DrillDownCardType =
   | 'retail_sales'
   | 'purchase_expenditure'
   | 'wholesale_profit'
-  | 'retail_profit';
+  | 'retail_profit'
+  | 'udhar_pending';
 
 export interface DrillDownRow {
   name: string;
@@ -166,4 +169,49 @@ export interface PartyBillsResponse {
   bills: PartyBill[];
   total_amount: number;
   total_profit: number;
+}
+
+// --- Udhar (Credit / Khata) ---
+export interface UdharEntry {
+  id: number;
+  customer_name: string;
+  original_amount: number;
+  remaining_amount: number;
+  udhar_date: string;
+  due_date?: string | null;
+  notes?: string | null;
+  is_paid: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UdharListResponse {
+  items: UdharEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface UdharSummary {
+  total_pending: number;
+  total_customers: number;
+  overdue_count: number;
+  overdue_amount: number;
+}
+
+export interface UdharCreatePayload {
+  customer_name: string;
+  original_amount: number;
+  udhar_date: string;
+  due_date?: string | null;
+  notes?: string | null;
+}
+
+export interface UdharUpdatePayload {
+  customer_name?: string;
+  remaining_amount?: number;
+  due_date?: string | null;
+  notes?: string | null;
+  is_paid?: boolean;
 }

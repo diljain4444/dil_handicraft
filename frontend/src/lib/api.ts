@@ -14,6 +14,11 @@ import type {
   DrillDownResponse,
   DrillDownCardType,
   PartyBillsResponse,
+  UdharEntry,
+  UdharListResponse,
+  UdharSummary,
+  UdharCreatePayload,
+  UdharUpdatePayload,
 } from '../types';
 
 const api = axios.create({
@@ -276,3 +281,38 @@ export const analyticsApi = {
 };
 
 export default api;
+
+// --- Udhar (Credit / Khata) ---
+export interface UdharListParams {
+  show_paid?: boolean;
+  customer_name?: string;
+  sort?: 'newest' | 'oldest' | 'due_soon' | 'highest';
+  page?: number;
+  page_size?: number;
+}
+
+export const udharApi = {
+  list: async (params: UdharListParams): Promise<UdharListResponse> => {
+    const { data } = await api.get<UdharListResponse>('/api/udhar', { params });
+    return data;
+  },
+  get: async (id: number): Promise<UdharEntry> => {
+    const { data } = await api.get<UdharEntry>(`/api/udhar/${id}`);
+    return data;
+  },
+  create: async (payload: UdharCreatePayload): Promise<UdharEntry> => {
+    const { data } = await api.post<UdharEntry>('/api/udhar', payload);
+    return data;
+  },
+  update: async (id: number, payload: UdharUpdatePayload): Promise<UdharEntry> => {
+    const { data } = await api.put<UdharEntry>(`/api/udhar/${id}`, payload);
+    return data;
+  },
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/api/udhar/${id}`);
+  },
+  getSummary: async (): Promise<UdharSummary> => {
+    const { data } = await api.get<UdharSummary>('/api/udhar/summary');
+    return data;
+  },
+};

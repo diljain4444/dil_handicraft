@@ -45,6 +45,13 @@ const CARD_META: Record<
     showProfit: true,
     color: '#10b981',
   },
+  udhar_pending: {
+    title: 'Udhar Pending Breakdown',
+    nameLabel: 'Customer',
+    amountLabel: 'Pending Amount',
+    showProfit: false,
+    color: '#f97316',
+  },
 };
 
 function formatDate(dateStr: string): string {

@@ -6,6 +6,7 @@ import {
   Package,
   DollarSign,
   ArrowUpRight,
+  BookOpen,
 } from 'lucide-react';
 import { PeriodSelector } from '../components/ui/PeriodSelector';
 import { KPICard } from '../components/ui/KPICard';
@@ -140,6 +141,15 @@ export function DashboardPage() {
             icon={ArrowUpRight}
             color="#ef4444"
             subtitle="Packing + Parcel + Other"
+          />
+          <KPICard
+            title="Udhar Pending"
+            value={summary.total_udhar_pending ?? 0}
+            icon={BookOpen}
+            color="#f97316"
+            subtitle={`${summary.udhar_customers_count ?? 0} customer${(summary.udhar_customers_count ?? 0) !== 1 ? 's' : ''}`}
+            clickable
+            onClick={() => openDrillDown('udhar_pending')}
           />
         </div>
       ) : null}

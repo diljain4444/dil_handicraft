@@ -16,6 +16,7 @@ export function AppShell({ children }: AppShellProps) {
     '/': 'Dashboard',
     '/transactions': 'Transactions',
     '/analytics': 'Analytics',
+    '/udhar': 'Udhar / Khata',
     '/more': 'More',
   };
 

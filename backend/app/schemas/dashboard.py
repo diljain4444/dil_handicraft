@@ -19,6 +19,8 @@ class DashboardSummary(BaseModel):
     wholesale_count: int
     retail_count: int
     purchase_count: int
+    total_udhar_pending: float = 0.0
+    udhar_customers_count: int = 0
     period_label: str
     start_date: Optional[date]
     end_date: Optional[date]
