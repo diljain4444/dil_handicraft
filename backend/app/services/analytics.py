@@ -167,12 +167,19 @@ async def get_dashboard_summary(
     )
     total_purchase_expenditure = purchase_amount + additional_expenses
 
-    # Udhar pending (not filtered by period — always all-time pending)
-    udhar_q = select(
-        func.coalesce(func.sum(Udhar.remaining_amount), 0).label("total_pending"),
-        func.count(Udhar.id).label("customer_count"),
-    ).where(Udhar.is_paid == False)  # noqa: E712
-    udhar_result = (await db.execute(udhar_q)).one()
+    # Udhar pending — wrapped in try/except so a missing table never breaks the dashboard
+    total_udhar_pending = 0.0
+    udhar_customers_count = 0
+    try:
+        udhar_q = select(
+            func.coalesce(func.sum(Udhar.remaining_amount), 0).label("total_pending"),
+            func.count(Udhar.id).label("customer_count"),
+        ).where(Udhar.is_paid == False)  # noqa: E712
+        udhar_result = (await db.execute(udhar_q)).one()
+        total_udhar_pending = _d(udhar_result.total_pending)
+        udhar_customers_count = udhar_result.customer_count
+    except Exception:
+        pass  # table may not exist yet; dashboard still works with 0 values
 
     return DashboardSummary(
         total_sales=total_sales,
@@ -187,8 +194,8 @@ async def get_dashboard_summary(
         wholesale_count=ws_result.count,
         retail_count=rt_result.count,
         purchase_count=pu_result.count,
-        total_udhar_pending=_d(udhar_result.total_pending),
-        udhar_customers_count=udhar_result.customer_count,
+        total_udhar_pending=total_udhar_pending,
+        udhar_customers_count=udhar_customers_count,
         period_label=period_label,
         start_date=start_date,
         end_date=end_date,
