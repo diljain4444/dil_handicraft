@@ -39,6 +39,13 @@ export function DashboardPage() {
 
   const { data: drillDownData, isLoading: drillDownLoading } = useKpiDrillDown(activeCard, opts);
 
+  // dashboardParams shape that the DrillDownModal/partyBills API expects
+  const dashboardParams = {
+    period,
+    start_date: startDate || null,
+    end_date: endDate || null,
+  };
+
   const handleDateChange = (s: string, e: string) => {
     setStartDate(s);
     setEndDate(e);
@@ -184,6 +191,7 @@ export function DashboardPage() {
         data={drillDownData}
         isLoading={drillDownLoading}
         onClose={closeDrillDown}
+        dashboardParams={dashboardParams}
       />
     </div>
   );

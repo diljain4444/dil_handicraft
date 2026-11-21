@@ -1,6 +1,9 @@
-import { X, TrendingUp, Package } from 'lucide-react';
+import { useState } from 'react';
+import { X, TrendingUp, Package, ChevronDown, ChevronUp, Calendar, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { formatCurrency } from '../../utils/format';
 import { LoadingSpinner } from './LoadingSpinner';
+import { dashboardApi } from '../../lib/api';
 import type { DrillDownCardType, DrillDownResponse } from '../../types';
 
 const CARD_META: Record<
@@ -44,12 +47,160 @@ const CARD_META: Record<
   },
 };
 
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// ---- Party row with expandable bills ----
+interface PartyRowProps {
+  idx: number;
+  row: DrillDownResponse['rows'][number];
+  cardType: DrillDownCardType;
+  color: string;
+  showProfit: boolean;
+  barPct: number;
+  pct: number;
+  dashboardParams: { period?: string; start_date?: string | null; end_date?: string | null };
+}
+
+function PartyRow({ idx, row, cardType, color, showProfit, barPct, pct, dashboardParams }: PartyRowProps) {
+  const [expanded, setExpanded] = useState(false);
+  const isSingle = row.transaction_count === 1;
+
+  // Fetch individual bills when expanded (or single — auto-fetch)
+  const { data: billsData, isLoading: billsLoading } = useQuery({
+    queryKey: ['party-bills', cardType, row.name, dashboardParams],
+    queryFn: () => dashboardApi.getPartyBills(cardType, row.name, dashboardParams),
+    enabled: expanded || isSingle,
+    staleTime: 60_000,
+  });
+
+  const displayAmount =
+    cardType === 'wholesale_profit' || cardType === 'retail_profit'
+      ? row.total_profit
+      : row.total_amount;
+
+  return (
+    <li className="border-b border-slate-50 last:border-0">
+      {/* Party header row */}
+      <button
+        className="w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+        onClick={() => !isSingle && setExpanded((v) => !v)}
+        style={{ cursor: isSingle ? 'default' : 'pointer' }}
+      >
+        <div className="flex items-start justify-between gap-2 mb-1.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+              style={{ backgroundColor: color }}
+            >
+              {idx + 1}
+            </span>
+            <span className="text-sm font-semibold text-slate-900 truncate">{row.name}</span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <p className="text-sm font-bold text-slate-900">{formatCurrency(displayAmount)}</p>
+            {!isSingle && (
+              expanded
+                ? <ChevronUp size={14} className="text-slate-400" />
+                : <ChevronDown size={14} className="text-slate-400" />
+            )}
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-1.5">
+          <div
+            className="h-full rounded-full transition-all"
+            style={{ width: `${barPct}%`, backgroundColor: color }}
+          />
+        </div>
+
+        <div className="flex items-center gap-3 text-xs text-slate-500">
+          {isSingle ? (
+            /* Single bill: show date inline */
+            billsLoading ? (
+              <span className="flex items-center gap-1">
+                <Loader2 size={10} className="animate-spin" /> loading…
+              </span>
+            ) : billsData?.bills[0] ? (
+              <span className="flex items-center gap-1">
+                <Calendar size={10} />
+                {formatDate(billsData.bills[0].date)}
+              </span>
+            ) : (
+              <span>{row.transaction_count} bill</span>
+            )
+          ) : (
+            <span>{row.transaction_count} bills — tap to expand</span>
+          )}
+          {showProfit && cardType !== 'wholesale_profit' && cardType !== 'retail_profit' && (
+            <span className="flex items-center gap-0.5" style={{ color }}>
+              <TrendingUp size={10} />
+              {formatCurrency(row.total_profit)} profit
+            </span>
+          )}
+          {cardType !== 'wholesale_profit' && cardType !== 'retail_profit' && (
+            <span className="ml-auto">{pct}% of total</span>
+          )}
+        </div>
+      </button>
+
+      {/* Expanded bills list (only for multi-transaction parties) */}
+      {!isSingle && expanded && (
+        <div className="bg-slate-50 border-t border-slate-100 px-4 py-2">
+          {billsLoading ? (
+            <div className="flex items-center gap-2 py-3 text-xs text-slate-500">
+              <Loader2 size={12} className="animate-spin" /> Loading bills…
+            </div>
+          ) : !billsData || billsData.bills.length === 0 ? (
+            <p className="text-xs text-slate-400 py-2">No bills found.</p>
+          ) : (
+            <ul className="space-y-2 py-1">
+              {billsData.bills.map((bill, bi) => (
+                <li key={bill.id} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <span
+                      className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
+                      style={{ backgroundColor: color + 'cc' }}
+                    >
+                      {bi + 1}
+                    </span>
+                    <Calendar size={10} className="text-slate-400" />
+                    <span className="font-medium">{formatDate(bill.date)}</span>
+                    {bill.notes && (
+                      <span className="text-slate-400 italic truncate max-w-[100px]">
+                        {bill.notes}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-slate-800">{formatCurrency(bill.amount)}</p>
+                    {showProfit && bill.profit > 0 && (
+                      <p className="text-[10px]" style={{ color }}>
+                        +{formatCurrency(bill.profit)}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
+// ---- Main modal ----
 interface DrillDownModalProps {
   cardType: DrillDownCardType | null;
   periodLabel: string;
   data: DrillDownResponse | undefined;
   isLoading: boolean;
   onClose: () => void;
+  dashboardParams: { period?: string; start_date?: string | null; end_date?: string | null };
 }
 
 export function DrillDownModal({
@@ -58,6 +209,7 @@ export function DrillDownModal({
   data,
   isLoading,
   onClose,
+  dashboardParams,
 }: DrillDownModalProps) {
   if (!cardType) return null;
 
@@ -142,51 +294,17 @@ export function DrillDownModal({
                   const barPct = maxSortValue > 0 ? (sortValue / maxSortValue) * 100 : 0;
 
                   return (
-                    <li key={idx} className="px-4 py-3">
-                      <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span
-                            className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-                            style={{ backgroundColor: meta.color }}
-                          >
-                            {idx + 1}
-                          </span>
-                          <span className="text-sm font-semibold text-slate-900 truncate">
-                            {row.name}
-                          </span>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-bold text-slate-900">
-                            {formatCurrency(
-                              cardType === 'wholesale_profit' || cardType === 'retail_profit'
-                                ? row.total_profit
-                                : row.total_amount
-                            )}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Progress bar */}
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-1.5">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${barPct}%`, backgroundColor: meta.color }}
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-3 text-xs text-slate-500">
-                        <span>{row.transaction_count} bill{row.transaction_count !== 1 ? 's' : ''}</span>
-                        {meta.showProfit && cardType !== 'wholesale_profit' && cardType !== 'retail_profit' && (
-                          <span className="flex items-center gap-0.5" style={{ color: meta.color }}>
-                            <TrendingUp size={10} />
-                            {formatCurrency(row.total_profit)} profit
-                          </span>
-                        )}
-                        {cardType !== 'wholesale_profit' && cardType !== 'retail_profit' && (
-                          <span className="ml-auto">{pct}% of total</span>
-                        )}
-                      </div>
-                    </li>
+                    <PartyRow
+                      key={idx}
+                      idx={idx}
+                      row={row}
+                      cardType={cardType}
+                      color={meta.color}
+                      showProfit={meta.showProfit}
+                      barPct={barPct}
+                      pct={pct}
+                      dashboardParams={dashboardParams}
+                    />
                   );
                 })}
               </ul>

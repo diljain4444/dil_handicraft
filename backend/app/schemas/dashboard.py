@@ -121,3 +121,22 @@ class DrillDownResponse(BaseModel):
     rows: list[DrillDownRow]
     total_amount: float    # Grand total
     total_profit: float    # Grand total profit
+
+
+class PartyBill(BaseModel):
+    """An individual bill/transaction for a specific party."""
+    id: int
+    date: date
+    amount: float          # selling_amount OR total_expenditure
+    profit: float          # estimated_profit (0 for purchases)
+    notes: Optional[str]
+
+
+class PartyBillsResponse(BaseModel):
+    """All individual bills for a specific party in a KPI drill-down."""
+    card_type: str
+    party_name: str
+    period_label: str
+    bills: list[PartyBill]
+    total_amount: float
+    total_profit: float

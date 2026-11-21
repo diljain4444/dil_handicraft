@@ -16,7 +16,7 @@ from app.models.purchase import Purchase
 from app.schemas.dashboard import (
     DashboardSummary, SalesTrendPoint, PurchaseTrendPoint, ProfitTrendPoint,
     SalesDistribution, TopShopItem, TopSupplierItem, MonthlyBreakdown, DailyBreakdown,
-    DrillDownRow, DrillDownResponse,
+    DrillDownRow, DrillDownResponse, PartyBill, PartyBillsResponse,
 )
 
 IST = pytz.timezone("Asia/Kolkata")
@@ -664,4 +664,103 @@ async def get_kpi_drilldown(
         rows=rows,
         total_amount=grand_total,
         total_profit=grand_profit,
+    )
+
+
+async def get_party_bills(
+    db: AsyncSession,
+    card_type: str,
+    party_name: str,
+    start_date: Optional[date],
+    end_date: Optional[date],
+    period_label: str,
+) -> PartyBillsResponse:
+    """Get individual bills for a specific party/customer/supplier."""
+    bills: list[PartyBill] = []
+
+    if card_type in ('wholesale_sales', 'wholesale_profit'):
+        q = select(
+            WholesaleSale.id,
+            WholesaleSale.transaction_date,
+            WholesaleSale.selling_amount,
+            WholesaleSale.estimated_profit,
+            WholesaleSale.notes,
+        ).where(WholesaleSale.shop_name == party_name)
+        q = _apply_wholesale_date_filter(q, start_date, end_date)
+        q = q.order_by(WholesaleSale.transaction_date.desc())
+        rows = (await db.execute(q)).fetchall()
+        for r in rows:
+            bills.append(PartyBill(
+                id=r[0],
+                date=r[1],
+                amount=_d(r[2]),
+                profit=_d(r[3]),
+                notes=r[4],
+            ))
+
+    elif card_type in ('retail_sales', 'retail_profit'):
+        # Walk-in / Counter maps to customer_label IS NULL
+        if party_name == 'Walk-in / Counter':
+            q = select(
+                RetailSale.id,
+                RetailSale.transaction_date,
+                RetailSale.selling_amount,
+                RetailSale.estimated_profit,
+                RetailSale.notes,
+            ).where(RetailSale.customer_label.is_(None))
+        else:
+            q = select(
+                RetailSale.id,
+                RetailSale.transaction_date,
+                RetailSale.selling_amount,
+                RetailSale.estimated_profit,
+                RetailSale.notes,
+            ).where(RetailSale.customer_label == party_name)
+        q = _apply_retail_date_filter(q, start_date, end_date)
+        q = q.order_by(RetailSale.transaction_date.desc())
+        rows = (await db.execute(q)).fetchall()
+        for r in rows:
+            bills.append(PartyBill(
+                id=r[0],
+                date=r[1],
+                amount=_d(r[2]),
+                profit=_d(r[3]),
+                notes=r[4],
+            ))
+
+    elif card_type == 'purchase_expenditure':
+        total_exp_expr = (
+            Purchase.purchase_amount +
+            Purchase.packing_cost +
+            Purchase.parcel_cost +
+            Purchase.other_expenses
+        )
+        q = select(
+            Purchase.id,
+            Purchase.purchase_date,
+            total_exp_expr.label('total_exp'),
+            Purchase.notes,
+        ).where(Purchase.supplier_name == party_name)
+        q = _apply_purchase_date_filter(q, start_date, end_date)
+        q = q.order_by(Purchase.purchase_date.desc())
+        rows = (await db.execute(q)).fetchall()
+        for r in rows:
+            bills.append(PartyBill(
+                id=r[0],
+                date=r[1],
+                amount=_d(r[2]),
+                profit=0.0,
+                notes=r[3],
+            ))
+
+    total_amount = sum(b.amount for b in bills)
+    total_profit = sum(b.profit for b in bills)
+
+    return PartyBillsResponse(
+        card_type=card_type,
+        party_name=party_name,
+        period_label=period_label,
+        bills=bills,
+        total_amount=total_amount,
+        total_profit=total_profit,
     )

@@ -150,3 +150,20 @@ export interface DrillDownResponse {
   total_amount: number;
   total_profit: number;
 }
+
+export interface PartyBill {
+  id: number;
+  date: string;
+  amount: number;
+  profit: number;
+  notes?: string;
+}
+
+export interface PartyBillsResponse {
+  card_type: DrillDownCardType;
+  party_name: string;
+  period_label: string;
+  bills: PartyBill[];
+  total_amount: number;
+  total_profit: number;
+}

@@ -13,6 +13,7 @@ import type {
   MonthlyBreakdown,
   DrillDownResponse,
   DrillDownCardType,
+  PartyBillsResponse,
 } from '../types';
 
 const api = axios.create({
@@ -95,6 +96,16 @@ export const dashboardApi = {
   ): Promise<DrillDownResponse> => {
     const { data } = await api.get<DrillDownResponse>('/api/dashboard/drilldown', {
       params: { card_type, ...params },
+    });
+    return data;
+  },
+  getPartyBills: async (
+    card_type: DrillDownCardType,
+    party_name: string,
+    params: DashboardParams
+  ): Promise<PartyBillsResponse> => {
+    const { data } = await api.get<PartyBillsResponse>('/api/dashboard/party-bills', {
+      params: { card_type, party_name, ...params },
     });
     return data;
   },
