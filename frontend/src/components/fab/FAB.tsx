@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Plus, X, ShoppingBag, ShoppingCart, Package } from 'lucide-react';
+import { Plus, X, ShoppingBag, ShoppingCart, Package, BookOpen } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { WholesaleForm } from '../forms/WholesaleForm';
 import { RetailForm } from '../forms/RetailForm';
 import { PurchaseForm } from '../forms/PurchaseForm';
+import { UdharForm } from '../forms/UdharForm';
 
-type FormType = 'wholesale' | 'retail' | 'purchase' | null;
+type FormType = 'wholesale' | 'retail' | 'purchase' | 'udhar' | null;
 
 export function FAB() {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -20,6 +21,7 @@ export function FAB() {
     { type: 'wholesale' as const, icon: ShoppingBag, label: 'Add Wholesale Sale', color: '#3b82f6' },
     { type: 'retail' as const, icon: ShoppingCart, label: 'Add Retail Sale', color: '#22c55e' },
     { type: 'purchase' as const, icon: Package, label: 'Add Purchase', color: '#8b5cf6' },
+    { type: 'udhar' as const, icon: BookOpen, label: 'Add Udhar Entry', color: '#f97316' },
   ];
 
   return (
@@ -88,6 +90,14 @@ export function FAB() {
         title="Add Purchase"
       >
         <PurchaseForm onSuccess={() => setOpenForm(null)} onCancel={() => setOpenForm(null)} />
+      </Modal>
+
+      <Modal
+        isOpen={openForm === 'udhar'}
+        onClose={() => setOpenForm(null)}
+        title="Add Udhar Entry"
+      >
+        <UdharForm onSuccess={() => setOpenForm(null)} onCancel={() => setOpenForm(null)} />
       </Modal>
     </>
   );

@@ -45,6 +45,13 @@ export function MorePage() {
           <span className="text-sm font-medium text-slate-700">Analytics</span>
           <ArrowRight size={16} className="text-slate-400" />
         </NavLink>
+        <NavLink
+          to="/udhar"
+          className="flex items-center justify-between px-4 py-3.5 hover:bg-slate-50 transition-colors"
+        >
+          <span className="text-sm font-medium text-slate-700">Udhar / Khata</span>
+          <ArrowRight size={16} className="text-slate-400" />
+        </NavLink>
       </div>
 
       {/* App info */}

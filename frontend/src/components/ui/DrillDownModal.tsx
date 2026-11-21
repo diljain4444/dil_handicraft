@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { X, TrendingUp, Package, ChevronDown, ChevronUp, Calendar, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, TrendingUp, Package, ChevronDown, ChevronUp, Calendar, Loader2, ArrowRight, BookOpen } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { formatCurrency } from '../../utils/format';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -218,6 +219,7 @@ export function DrillDownModal({
   onClose,
   dashboardParams,
 }: DrillDownModalProps) {
+  const navigate = useNavigate();
   if (!cardType) return null;
 
   const meta = CARD_META[cardType];
@@ -258,6 +260,18 @@ export function DrillDownModal({
               <Package size={40} className="mb-3 opacity-40" />
               <p className="text-sm font-medium">No transactions found</p>
               <p className="text-xs mt-1">for the selected period</p>
+              {cardType === 'udhar_pending' && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    navigate('/udhar');
+                  }}
+                  className="mt-4 flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold shadow-sm hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: meta.color }}
+                >
+                  <BookOpen size={14} /> Open Udhar Section
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -318,6 +332,24 @@ export function DrillDownModal({
             </>
           )}
         </div>
+
+        {/* Footer action for Udhar */}
+        {cardType === 'udhar_pending' && data && data.rows.length > 0 && (
+          <div className="p-3 bg-slate-50 border-t border-slate-100 rounded-b-2xl">
+            <button
+              onClick={() => {
+                onClose();
+                navigate('/udhar');
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-white text-xs font-semibold shadow-sm hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: meta.color }}
+            >
+              <BookOpen size={15} />
+              Open Udhar / Khata Book (Add & Manage)
+              <ArrowRight size={15} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

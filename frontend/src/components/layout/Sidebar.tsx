@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ArrowLeftRight, BarChart3, MoreHorizontal, Scissors } from 'lucide-react';
+import { LayoutDashboard, ArrowLeftRight, BarChart3, BookOpen, MoreHorizontal, Scissors } from 'lucide-react';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/transactions', icon: ArrowLeftRight, label: 'Transactions' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
+  { to: '/udhar', icon: BookOpen, label: 'Udhar / Khata' },
   { to: '/more', icon: MoreHorizontal, label: 'More' },
 ];
 
